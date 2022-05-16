@@ -1,0 +1,90 @@
+substitutions:
+  devicename: nightlamp_d1_minipro
+  upper_devicename: Nightlamp snail
+  
+  # Wifi credentials
+  wifi_ssid: !secret wifi_ssid
+  wifi_password: !secret wifi_pass
+  ap_ssid: "Nightlamp D1 Minipro"
+  ap_password: "1234567890"
+
+  # OTA and API
+  ota_password: "esphome"
+  api_password: "esphome"
+
+
+esphome:
+  name: $devicename
+  platform: ESP8266
+  board: d1_mini_pro
+
+wifi:
+  ssid: $wifi_ssid
+  password: $wifi_password
+  fast_connect: on
+  reboot_timeout: 60min
+#  manual_ip:
+#    static_ip: 192.168.49.131
+#    gateway: 192.168.49.1
+#    subnet: 255.255.255.0  
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: $ap_ssid
+    password: $ap_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: $api_password
+  
+# Enable OTA Access
+ota:
+  password: $ota_password
+
+web_server:
+  port: 80
+
+
+# датчик, который будет нам показывать статус подключения нашего устройства к сети
+binary_sensor:
+  - platform: status
+    name: "Nightlamp_net"
+
+# датчик, который будет нам показывать время работы устройства в сети
+sensor:
+  - platform: uptime
+    name: Nightlamp Uptime Sensor
+
+    
+# nightlight ip
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: nightlamp_snail_ip
+
+    
+# Ночник Улитка
+#switch:
+#  - platform: gpio
+#    name: "Nightlamp_switch"
+#    pin: GPIO14
+#    id: relay
+
+
+light:
+  - platform: monochromatic
+    name: "Nightlamp snail"
+    id: nightlamp_snail
+    output: output_nightlamp_snail
+    default_transition_length: 5s
+
+
+output:
+  - platform: esp8266_pwm
+    id: output_nightlamp_snail
+    pin: D5
