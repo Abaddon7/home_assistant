@@ -1,0 +1,158 @@
+# Описание
+# Управление свечением шаров (LED лента WS2812 из 12 светодиодов) на пин D4
+# Управление свечением лошадок (обычные светодиоды 5В) на пин D5
+
+substitutions:
+  devicename: bed_garland
+  upper_devicename: Bed garland
+  
+  # Wifi credentials
+  wifi_ssid: !secret wifi_ssid
+  wifi_password: !secret wifi_pass
+  ap_ssid: "Bed garland Hotspot WemosD1"
+  ap_password: "1234567890"
+
+  # OTA and API
+  ota_password: "esphome"
+  api_password: "esphome"
+
+
+esphome:
+  name: $devicename
+
+esp8266:
+  board: d1_mini
+  framework:
+    version: 2.7.4
+
+wifi:
+  ssid: $wifi_ssid
+  password: $wifi_password
+  fast_connect: on
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: $ap_ssid
+    password: $ap_password
+
+captive_portal:
+
+web_server:
+  port: 80
+
+
+# Enable Home Assistant API
+api:
+  password: $api_password
+  
+# Enable OTA Access
+ota:
+  password: $ota_password
+  
+# Enable verbose logging over serial
+logger:
+
+
+light:
+  # Управление подсветкой шаров через библиотеку FastLED
+  - platform: fastled_clockless
+    chipset: WS2812
+    pin: D4
+    num_leds: 12
+    name: "Ночник шары"
+    effects:
+      - addressable_rainbow:
+          name: "Радуга"
+          speed: 5
+          width: 50
+      - addressable_twinkle:
+          name: "Мерцание"
+          twinkle_probability: 5%
+          progress_interval: 4ms
+      - addressable_random_twinkle:
+          name: "Мерцание случайное"
+          twinkle_probability: 5%
+          progress_interval: 5ms
+      - random:
+          name: "Random"
+          transition_length: 4s
+          update_interval: 20s
+      - strobe:
+          name: "Строб"
+          colors:
+            - state: True
+              brightness: 100%
+              red: 100%
+              green: 90%
+              blue: 0%
+              duration: 500ms
+            - state: False
+              duration: 250ms
+            - state: True
+              brightness: 100%
+              red: 0%
+              green: 100%
+              blue: 0%
+              duration: 500ms
+      - addressable_scan:
+          name: "Сканирование"
+          move_interval: 200ms
+          scan_width: 2
+      - addressable_flicker:
+          name: "Вспышка"
+          update_interval: 16ms
+          intensity: 10%
+
+  # Управление свечением лошадок
+  - platform: monochromatic
+    name: "Ночник лошадки"
+    id: garland_horses
+    output: output_garland_horses
+    default_transition_length: 10s
+
+output:
+  - platform: esp8266_pwm
+    id: output_garland_horses
+    pin: D1
+
+
+
+# Общие данные по устройству
+
+# датчик, который будет нам показывать статус подключения нашего устройства к сети
+binary_sensor:
+  - platform: status
+    name: "Bed_garland_net"
+
+sensor:
+  - platform: uptime
+    id: uptime_sec
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: bed_garland_ip
+  - platform: template
+    name: ${upper_devicename} Uptime
+    lambda: |-
+      int seconds = (id(uptime_sec).state);
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      seconds = seconds % 60;
+      return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
+    icon: mdi:clock-start
+    update_interval: 113s
+  - platform: version
+    name: ${upper_devicename} Version
+  - platform: template
+    name: ${upper_devicename} MAC Address
+    lambda: 'return {WiFi.macAddress().c_str()};'
+    icon: mdi:fingerprint
+    update_interval: 1d
+
+switch:
+  - platform: restart
+    name: ${upper_devicename} Restart
