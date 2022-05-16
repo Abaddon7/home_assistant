@@ -7,8 +7,6 @@ substitutions:
   upper_devicename: Bed garland
   
   # Wifi credentials
-  wifi_ssid: !secret wifi_ssid
-  wifi_password: !secret wifi_pass
   ap_ssid: "Bed garland Hotspot WemosD1"
   ap_password: "1234567890"
 
@@ -26,8 +24,8 @@ esp8266:
     version: 2.7.4
 
 wifi:
-  ssid: $wifi_ssid
-  password: $wifi_password
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
   fast_connect: on
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
@@ -63,8 +61,8 @@ light:
     effects:
       - addressable_rainbow:
           name: "Радуга"
-          speed: 5
-          width: 50
+          speed: 3
+          width: 20
       - addressable_twinkle:
           name: "Мерцание"
           twinkle_probability: 5%
@@ -77,23 +75,6 @@ light:
           name: "Random"
           transition_length: 4s
           update_interval: 20s
-      - strobe:
-          name: "Строб"
-          colors:
-            - state: True
-              brightness: 100%
-              red: 100%
-              green: 90%
-              blue: 0%
-              duration: 500ms
-            - state: False
-              duration: 250ms
-            - state: True
-              brightness: 100%
-              red: 0%
-              green: 100%
-              blue: 0%
-              duration: 500ms
       - addressable_scan:
           name: "Сканирование"
           move_interval: 200ms
