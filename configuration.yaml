@@ -1,0 +1,233 @@
+homeassistant:
+  packages: !include_dir_merge_named includes/packages
+  whitelist_external_dirs:
+  - /config
+
+# Configure a default setup of Home Assistant (frontend, api, etc)
+#default_config:
+
+#zeroconf:
+#  default_interface: true
+  
+# Сенсор для отображения последней версии НА
+# updater:
+
+# Потоковое изображение с камер
+#stream:
+
+# Включение истории
+history:
+
+# медиа контент
+media_source:
+
+# Список
+shopping_list:
+
+# Управление через Broadlink
+smartir:
+
+# Доступ извне
+webhook:
+
+# Позволяет посылать магические пакеты для пробуждения по локальной сети устройств , поддерживающих это
+wake_on_lan:
+
+
+system_health:
+
+# Uncomment this if you are using SSL/TLS, running in Docker container, etc.
+http:
+#   base_url: example.duckdns.org:8123
+  base_url: muhanic.duckdns.org:8123
+#  base_url: https://ha.muhanic.keenetic.pro/
+  ssl_certificate: /ssl/fullchain.pem
+  ssl_key: /ssl/privkey.pem
+
+
+
+
+# Компонент, позволяющий в автоматическом режиме находить ваши устройства в сети.
+# Хорошо подтягивает Xiaomi zigbee устройства подключенные к шлюзу, сам шлюз, телеки известных фирм.
+# Немного увеличивает время запуска HA 
+discovery:
+
+# Интеграция с умным домом от яндекса
+yandex_smart_home:
+
+# Добавление колонки Яндекс-мини
+yandex_station:
+  username: !secret yandex_user
+  password: !secret yandex_pass
+  
+  # По умолчанию в Home Assistant включен голосовой ввод только на английском яыке.
+  # Чтоб это исправить - добавьте в конфиг такую настройку. Если у вас голосовой ввод
+  # не работает или он вам не нужен - настройку добавлять не надо! 
+  # Общаться текстом с Алисой вы можете и без неё. После изменения вероятно потребуется сбросить кэш браузера (включая cookies and other site data).
+  recognition_lang: ru-RU
+#   tts_service_name: yandex_tts
+#   tts_service_name: alice_say
+#   devices:
+#     12345678901234567890:  # device_id вашей колонки
+#       host: 192.168.1.123
+#       name: Яндекс Станция  # имя можно задать и тут
+
+# Text to speech
+# tts:
+#   - platform: google_translate
+#     service_name: google_say
+#     language: ru
+
+
+lovelace:
+  resources:
+    # Добавление в UI иконок Yandex
+    - url: /hacsfiles/ha-yandex-icons/yandex-icons.js
+      type: module  
+
+    # Добавление в UI карточки mini-media-player
+    - url: /hacsfiles/mini-media-player-bundle.js?v=1.9.1
+      type: module
+    
+    # Добавление в UI карточк button-card
+    - url: /hacsfiles/button-card/button-card.js
+      type: module
+
+    # Добавление в UI карточки StarLine 
+    - url: /local/starline-card.js?v=1
+      type: module
+
+
+
+#weather:
+#  - platform: yandex_weather
+#    api_key: !secret yandex_weather_api_key
+
+mqtt:
+## Выбрать один из вариантов для брокера!  
+  broker: core-mosquitto  # Локальный брокер
+#  broker: IP adress  # Внешний брокер
+  discovery: true
+  discovery_prefix: homeassistant  
+  username: mqtt
+  password: mqtt
+
+
+#Вынос во внешние файлы
+group: !include groups.yaml
+automation: !include automations.yaml
+#scene: !include scenes.yaml
+timer: !include includes/timer.yaml
+input_boolean: !include includes/input_boolean.yaml
+sonoff: !include includes/sonoff.yaml
+recorder: !include includes/recorder.yaml
+climate: !include includes/climate.yaml # Управление кондиционером через Broadlink
+
+
+#Вынос в папки
+sensor: !include_dir_merge_list includes/sensors
+binary_sensor: !include_dir_merge_list includes/bin_sensor
+switch: !include_dir_merge_list includes/switches
+script: !include_dir_merge_named includes/scripts
+input_number: !include_dir_merge_named includes/input_numbers
+
+
+# Телевизор в зале
+samsungtv:
+  - name: TV Samsung 
+    host: 192.168.49.5
+    turn_on_action:
+      - service: wake_on_lan.send_magic_packet
+        data:
+          mac: c4:73:1e:f9:d9:43
+
+
+media_player:
+  - platform: smartir
+    name: Телевизор в зале
+    unique_id: living_room_tv
+    device_code: 1060
+    controller_data: 192.168.49.102
+    power_sensor: binary_sensor.tv_lr_lan
+    source_names:
+      HDMI1: Notebook
+      HDMI2: Kodi player
+      HDMI3: null
+      VGA: null
+
+
+  # Use an ADB server for sending ADB commands
+  - platform: androidtv
+    name: Android TV Box
+    host: 192.168.49.7
+    adb_server_ip: 127.0.0.1
+
+#   - platform: mpd 
+#     name: Mopidy
+#     host: 192.168.49.100:6600
+
+
+
+# Увлажнитель
+#fan:
+#  - platform: xiaomi_miio
+#    host: 192.168.49.120
+#    token: 51f19b860d514df72974d087940a3a16 #!secret xiaomi_fan_token
+
+
+
+utility_meter:
+  hourly_energy:
+    source: sensor.impulse_counter
+    name: Hourly Energy
+    cycle: hourly
+  daily_energy:
+    source: sensor.impulse_counter
+    name: Daily Energy
+    cycle: daily
+  monthly_energy:
+    source: sensor.impulse_counter
+    name: Monthly Energy
+    cycle: monthly
+    offset:
+      # At least one of these must be specified:
+      days: 23
+      hours: 0
+      minutes: 0
+
+
+
+# switch:
+#   - platform: rpi_gpio
+#     ports:
+#       24: Lights_livingroom_relay
+
+
+
+# input_select:
+#   test4:
+#     name: Test 4
+#     options:
+#       - 1
+#       - 2
+#       - 3
+#       - 4
+#       - 5
+      
+
+rest_command:
+  google_backup:
+    url: 'https://muhanic.duckdns.org:8055/gb/doBackup'
+#    url: 'http://muhanic.keenetic.pro:8055/gb/doBackup'
+#    url: 'http://localhost:8055/gb/doBackup'
+#    url: 'http://192.168.49.100:8055/gb/doBackup'
+    timeout: '300'
+    
+
+calendar:
+  - platform: todoist
+    token: !secret API_TOKEN_TO_DO
+    custom_projects: #Тут указываем добавляемые проекты
+      - name: 'Список желаний'
+        include_projects: #тут указываем названия проектов, которые необходимо вывести из todoist
+          - Wish list
