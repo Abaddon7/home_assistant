@@ -17,16 +17,20 @@ substitutions:
 
 esphome:
   name: $devicename
-
-esp8266:
+  platform: ESP8266
   board: d1_mini
-  framework:
-    version: 2.7.4
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_pass
   fast_connect: on
+  manual_ip:
+    # Set this to the IP of the ESP
+    static_ip: 192.168.49.134
+    # Set this to the IP address of the router. Often ends with .1
+    gateway: 192.168.49.1
+    # The subnet of the network. 255.255.255.0 works for most home networks.
+    subnet: 255.255.255.0  
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -34,9 +38,6 @@ wifi:
     password: $ap_password
 
 captive_portal:
-
-web_server:
-  port: 80
 
 
 # Enable Home Assistant API
@@ -51,88 +52,206 @@ ota:
 logger:
 
 
-light:
-  # Управление подсветкой шаров через библиотеку FastLED
-  - platform: fastled_clockless
-    chipset: WS2812
-    pin: D4
-    num_leds: 12
-    name: Garland balls
-    effects:
-      - addressable_rainbow:
-          name: "Радуга"
-          speed: 3
-          width: 20
-      - addressable_twinkle:
-          name: "Мерцание"
-          twinkle_probability: 5%
-          progress_interval: 4ms
-      - addressable_random_twinkle:
-          name: "Мерцание случайное"
-          twinkle_probability: 5%
-          progress_interval: 5ms
-      - random:
-          name: "Random"
-          transition_length: 4s
-          update_interval: 20s
-      - addressable_scan:
-          name: "Сканирование"
-          move_interval: 200ms
-          scan_width: 2
-      - addressable_flicker:
-          name: "Вспышка"
-          update_interval: 16ms
-          intensity: 10%
-
-  # Управление свечением лошадок
-  - platform: monochromatic
-    name: Garland horses
-    id: garland_horses
-    output: output_garland_horses
-    default_transition_length: 10s
-
-output:
-  - platform: esp8266_pwm
-    id: output_garland_horses
-    pin: D1
 
 
 
-# Общие данные по устройству
+time:
+  - platform: homeassistant
+    id: homeassistant_time
 
-# датчик, который будет нам показывать статус подключения нашего устройства к сети
-binary_sensor:
-  - platform: status
-    name: "Bed_garland_net"
-
-sensor:
-  - platform: uptime
-    id: uptime_sec
+# Текущие координаты населенного пункта для вычисления времени захода и восхода Солнца
+sun:
+  latitude: 50.2652418
+  longitude: 127.5134592
 
 text_sensor:
+#  Version Text Sensor
+#  Датчик отображающий версию прошивки
+  - platform: version
+    name: "Bed garlands ESPHome Version"
+
+# Датчики времени восхода и захода Солнца
+  - platform: sun
+    name: Sun Next Sunrise
+    type: sunrise
+  - platform: sun
+    name: Sun Next Sunset
+    type: sunset
+
   - platform: wifi_info
     ip_address:
       name: bed_garland_ip
   - platform: template
     name: ${upper_devicename} Uptime
-    lambda: |-
-      int seconds = (id(uptime_sec).state);
-      int days = seconds / (24 * 3600);
-      seconds = seconds % (24 * 3600);
-      int hours = seconds / 3600;
-      seconds = seconds % 3600;
-      int minutes = seconds /  60;
-      seconds = seconds % 60;
-      return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
     icon: mdi:clock-start
     update_interval: 113s
   - platform: version
     name: ${upper_devicename} Version
-  - platform: template
-    name: ${upper_devicename} MAC Address
-    lambda: 'return {WiFi.macAddress().c_str()};'
-    icon: mdi:fingerprint
-    update_interval: 1d
+
+#display:
+#    platform: tm1637
+#    id: tm1637_display
+#    clk_pin: GPIO12 # D6
+#    dio_pin: GPIO13 # D7
+#    update_interval: 500ms
+    # Каждую минуту 9 секунд показывать температуру, а в останое время - текущее время
+#    lambda: |-
+#      if (id(homeassistant_time).now().second > 50) {
+#        it.printf(0, "%.1f", id(temp_dht22).state);
+#        it.print(3,"~");
+#      } else {
+#        static int i = 0;
+#        i++;
+#        if ((i % 2) == 0)
+#          it.strftime("%H.%M", id(homeassistant_time).now());
+#        else
+#          it.strftime("%H%M", id(homeassistant_time).now());
+#      }
+
+
+output:
+  - platform: esp8266_pwm
+    id: garlang_led_noaddr_out
+    pin:
+      number: D2  
+
+
+
+light:
+  # Управление подсветкой контура кроватки через библиотеку neopixel/FastLED
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: D1
+    num_leds: 50
+    name: "Garland Frame"
+    effects:
+      - addressable_rainbow:
+          name: "Радуга"
+          speed: 3
+          width: 20
+      - addressable_scan:
+          name: "Сканирование"
+          move_interval: 20ms
+          scan_width: 2
+  
+  # Управление подсветкой шаров через библиотеку neopixel/FastLED
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: D3
+    num_leds: 12
+    name: "Garland balls"
+    effects:
+      - addressable_rainbow:
+          name: "Радуга"
+          speed: 3
+          width: 20
+      - random:
+          name: "Random"
+          transition_length: 4s
+          update_interval: 20s
+      - addressable_flicker:
+          name: "Вспышка"
+          update_interval: 100ms
+          intensity: 20%
+
+  # Управление подсветкой лошадок через библиотеку neopixel/FastLED
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: D4
+    num_leds: 10
+    name: "Garland horses"
+    id: garland_horses
+    effects:
+      - addressable_rainbow:
+          name: "Радуга"
+          speed: 2
+          width: 20
+      - addressable_flicker:
+          name: "Вспышка"
+          update_interval: 200ms
+          intensity: 20%
+
+  # Управление свечением неадресных светодиодов через транзистор
+  - platform: monochromatic
+    name: Garland LED noaddr
+    id: garland_led_noaddr
+    output: garlang_led_noaddr_out
+    #default_transition_length: 10s
+
+
+
+binary_sensor:
+  # датчик, который будет нам показывать статус подключения нашего устройства к сети
+  - platform: status
+    name: "Bed_garland_net"
+
+  # датчик движения
+  - platform: gpio
+    pin: D5
+#    pin:
+#      number: D5
+#      inverted: false
+#      mode:
+#        input: true
+#        pullup: true
+    name: "bed_motion"
+    device_class: motion
+    id: bed_motion
+#    on_press:
+#      - if:
+#          condition:
+#              - sun.is_below_horizon:
+#              - binary_sensor.is_off: light_on
+              #- light.light_on.is_off
+              #- lambda: |-
+              #    return id(light_on).is_off
+              #- lambda: |-
+              #    return id(homeassistant_time).now().hour > 18;
+#          then:
+#            - light.turn_on: LED_horses_1
+# По сигналу с PIR датчика включаем и выкоючаем красный светодиод
+#      - light.turn_on: blue_l
+#    on_release:
+#      - light.turn_off: blue_l
+    
+      
+#  - platform: template
+#    name: temp_motion
+#    lambda: 'return id(bed_motion).state;'
+#    filters:
+#      - delayed_off: 20s # или, например 1min
+#    on_release:
+#      - if:
+#          condition:
+#            - light.is_on: garland_horses
+#          then:
+#            - light.turn_off: garland_horses
+
+#  - platform: homeassistant
+#    name: "Light From Home Assistant"
+#    entity_id: light.nightlamp_snail
+#    id: light_on
+
+
+sensor:
+  # датчик температуры и влажности DHT11
+  - platform: dht
+    pin: D6
+    temperature:
+      name: "Bed Room Temperature"
+      id: temp_dht11
+    humidity:
+      name: "Bed Room Humidity"
+    update_interval: 10s
+    
+  #  Uptime Sensor
+  #  Датчик отображающий время работы
+  - platform: uptime
+    id: uptime_sec
+
 
 switch:
   - platform: restart
